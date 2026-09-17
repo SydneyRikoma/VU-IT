@@ -19,7 +19,7 @@ export const END_USER_ROLES = [
 
 export type Role = (typeof PRIMARY_ROLES)[number] | (typeof END_USER_ROLES)[number];
 
-const APPROVER_ROLES: Role[] = ["Admin", "HOD", "Technical Assistant"];
+const APPROVER_ROLES: Role[] = ["Admin", "CISO", "HOD", "Technical Assistant"];
 const MANAGER_ROLES: Role[] = ["Admin", "HOD", "Technical Assistant", "CISO"];
 
 /** Roles that must authenticate with a username + password. */
@@ -42,9 +42,11 @@ type RoleContextValue = {
   session: Session | null;
   role: Role;
   ready: boolean;
-  signIn: (input: { role: Role; name: string; password?: string }) =>
-    | { ok: true }
-    | { ok: false; error: string };
+  signIn: (input: {
+    role: Role;
+    name: string;
+    password?: string;
+  }) => { ok: true } | { ok: false; error: string };
   signOut: () => void;
   can: (permission: Permission) => boolean;
 };
