@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Bell, HelpCircle, LogOut, Search, Settings, UserRound } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 
-import { ReporterPortal } from "@/components/ReporterPortal";
+import { EndUserPortal } from "@/components/EndUserPortal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isPrivileged, useRole } from "@/lib/roles";
@@ -99,7 +99,7 @@ export function AppShell({
       </div>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-        {privileged ? children : <ReporterPortal />}
+        {privileged ? children : <EndUserPortal />}
       </main>
     </div>
   );

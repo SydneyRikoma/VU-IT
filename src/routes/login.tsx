@@ -77,7 +77,20 @@ function LoginPage() {
               return;
             }
             setError(null);
-            navigate({ to: "/", replace: true });
+
+            const endUserRoutes: Record<Role, string> = {
+              Faculty: "/faculty",
+              "Teaching Staff": "/teaching-staff",
+              "Non-Teaching Staff": "/non-teaching-staff",
+              Student: "/student",
+              Department: "/department",
+              Admin: "/",
+              CISO: "/",
+              HOD: "/",
+              "Technical Assistant": "/",
+            };
+
+            navigate({ to: endUserRoutes[role], replace: true });
           }}
         >
           <div className="grid gap-2">

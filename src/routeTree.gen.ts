@@ -13,7 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as CctvRouteImport } from './routes/cctv'
+import { Route as DepartmentRouteImport } from './routes/department'
+import { Route as FacultyRouteImport } from './routes/faculty'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NonTeachingStaffRouteImport } from './routes/non-teaching-staff'
+import { Route as StudentRouteImport } from './routes/student'
+import { Route as TeachingStaffRouteImport } from './routes/teaching-staff'
 import { Route as TicketsRouteImport } from './routes/tickets'
 
 const IndexRoute = IndexRouteImport.update({
@@ -36,9 +41,34 @@ const CctvRoute = CctvRouteImport.update({
   path: '/cctv',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DepartmentRoute = DepartmentRouteImport.update({
+  id: '/department',
+  path: '/department',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FacultyRoute = FacultyRouteImport.update({
+  id: '/faculty',
+  path: '/faculty',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NonTeachingStaffRoute = NonTeachingStaffRouteImport.update({
+  id: '/non-teaching-staff',
+  path: '/non-teaching-staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StudentRoute = StudentRouteImport.update({
+  id: '/student',
+  path: '/student',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeachingStaffRoute = TeachingStaffRouteImport.update({
+  id: '/teaching-staff',
+  path: '/teaching-staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TicketsRoute = TicketsRouteImport.update({
@@ -52,7 +82,12 @@ export interface FileRoutesByFullPath {
   '/assets': typeof AssetsRoute
   '/audit': typeof AuditRoute
   '/cctv': typeof CctvRoute
+  '/department': typeof DepartmentRoute
+  '/faculty': typeof FacultyRoute
   '/login': typeof LoginRoute
+  '/non-teaching-staff': typeof NonTeachingStaffRoute
+  '/student': typeof StudentRoute
+  '/teaching-staff': typeof TeachingStaffRoute
   '/tickets': typeof TicketsRoute
 }
 export interface FileRoutesByTo {
@@ -60,7 +95,12 @@ export interface FileRoutesByTo {
   '/assets': typeof AssetsRoute
   '/audit': typeof AuditRoute
   '/cctv': typeof CctvRoute
+  '/department': typeof DepartmentRoute
+  '/faculty': typeof FacultyRoute
   '/login': typeof LoginRoute
+  '/non-teaching-staff': typeof NonTeachingStaffRoute
+  '/student': typeof StudentRoute
+  '/teaching-staff': typeof TeachingStaffRoute
   '/tickets': typeof TicketsRoute
 }
 export interface FileRoutesById {
@@ -69,15 +109,54 @@ export interface FileRoutesById {
   '/assets': typeof AssetsRoute
   '/audit': typeof AuditRoute
   '/cctv': typeof CctvRoute
+  '/department': typeof DepartmentRoute
+  '/faculty': typeof FacultyRoute
   '/login': typeof LoginRoute
+  '/non-teaching-staff': typeof NonTeachingStaffRoute
+  '/student': typeof StudentRoute
+  '/teaching-staff': typeof TeachingStaffRoute
   '/tickets': typeof TicketsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/assets' | '/audit' | '/cctv' | '/login' | '/tickets'
+  fullPaths:
+    | '/'
+    | '/assets'
+    | '/audit'
+    | '/cctv'
+    | '/department'
+    | '/faculty'
+    | '/login'
+    | '/non-teaching-staff'
+    | '/student'
+    | '/teaching-staff'
+    | '/tickets'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/assets' | '/audit' | '/cctv' | '/login' | '/tickets'
-  id: '__root__' | '/' | '/assets' | '/audit' | '/cctv' | '/login' | '/tickets'
+  to:
+    | '/'
+    | '/assets'
+    | '/audit'
+    | '/cctv'
+    | '/department'
+    | '/faculty'
+    | '/login'
+    | '/non-teaching-staff'
+    | '/student'
+    | '/teaching-staff'
+    | '/tickets'
+  id:
+    | '__root__'
+    | '/'
+    | '/assets'
+    | '/audit'
+    | '/cctv'
+    | '/department'
+    | '/faculty'
+    | '/login'
+    | '/non-teaching-staff'
+    | '/student'
+    | '/teaching-staff'
+    | '/tickets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -85,7 +164,12 @@ export interface RootRouteChildren {
   AssetsRoute: typeof AssetsRoute
   AuditRoute: typeof AuditRoute
   CctvRoute: typeof CctvRoute
+  DepartmentRoute: typeof DepartmentRoute
+  FacultyRoute: typeof FacultyRoute
   LoginRoute: typeof LoginRoute
+  NonTeachingStaffRoute: typeof NonTeachingStaffRoute
+  StudentRoute: typeof StudentRoute
+  TeachingStaffRoute: typeof TeachingStaffRoute
   TicketsRoute: typeof TicketsRoute
 }
 
@@ -119,11 +203,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CctvRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/department': {
+      id: '/department'
+      path: '/department'
+      fullPath: '/department'
+      preLoaderRoute: typeof DepartmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faculty': {
+      id: '/faculty'
+      path: '/faculty'
+      fullPath: '/faculty'
+      preLoaderRoute: typeof FacultyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/non-teaching-staff': {
+      id: '/non-teaching-staff'
+      path: '/non-teaching-staff'
+      fullPath: '/non-teaching-staff'
+      preLoaderRoute: typeof NonTeachingStaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/student': {
+      id: '/student'
+      path: '/student'
+      fullPath: '/student'
+      preLoaderRoute: typeof StudentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teaching-staff': {
+      id: '/teaching-staff'
+      path: '/teaching-staff'
+      fullPath: '/teaching-staff'
+      preLoaderRoute: typeof TeachingStaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tickets': {
@@ -141,7 +260,12 @@ const rootRouteChildren: RootRouteChildren = {
   AssetsRoute: AssetsRoute,
   AuditRoute: AuditRoute,
   CctvRoute: CctvRoute,
+  DepartmentRoute: DepartmentRoute,
+  FacultyRoute: FacultyRoute,
   LoginRoute: LoginRoute,
+  NonTeachingStaffRoute: NonTeachingStaffRoute,
+  StudentRoute: StudentRoute,
+  TeachingStaffRoute: TeachingStaffRoute,
   TicketsRoute: TicketsRoute,
 }
 export const routeTree = rootRouteImport
