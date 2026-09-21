@@ -82,6 +82,20 @@ type Ticket = {
   closedAt?: string;
 };
 
+type AssetRequest = {
+  id: string;
+  requestedAt: string;
+  title: string;
+  description: string;
+  assetItem: string;
+  quantity: number;
+  requiredBy: string;
+  department: string;
+  technicalAssistant: string;
+  requestor: UserDetails;
+  status: "Pending" | "Assigned" | "Delivered";
+};
+
 const LANES: Lane[] = [
   "Assigned",
   "In Progress",
@@ -140,6 +154,45 @@ const REPLACEMENT_COMPONENT_OPTIONS = [
   "Monitor cable",
   "Other",
 ] as const;
+
+const SAMPLE_ASSET_REQUESTS: AssetRequest[] = [
+  {
+    id: "AST-001",
+    requestedAt: "2026-09-21 09:15 AM",
+    title: "Laptop request for faculty lab",
+    description: "Faculty teaching lab needs two laptops for practical instruction and assessment support.",
+    assetItem: "Laptop",
+    quantity: 2,
+    requiredBy: "2026-09-30",
+    department: "Computer Science",
+    technicalAssistant: "Tech Assistant 1",
+    requestor: {
+      name: "Dr. Nandipha Moyo",
+      email: "nandipha.moyo@vu.ac.za",
+      id: "FAC-20401",
+      phone: "+27 82 210 4432",
+    },
+    status: "Assigned",
+  },
+  {
+    id: "AST-002",
+    requestedAt: "2026-09-21 11:40 AM",
+    title: "Department projector replacement",
+    description: "Requested replacement for the department seminar room projector to support scheduled lectures.",
+    assetItem: "Projector",
+    quantity: 1,
+    requiredBy: "2026-10-02",
+    department: "Engineering",
+    technicalAssistant: "Tech Assistant 2",
+    requestor: {
+      name: "Mr. James Ndlovu",
+      email: "james.ndlovu@vu.ac.za",
+      id: "DEP-7803",
+      phone: "+27 71 884 1001",
+    },
+    status: "Pending",
+  },
+];
 
 const SAMPLE_TICKETS: Ticket[] = [
   {
@@ -340,6 +393,7 @@ function TicketsPage() {
   const { role, can, session } = useRole();
   const [tab, setTab] = useState<TabId>("triage");
   const [tickets, setTickets] = useState<Ticket[]>(SAMPLE_TICKETS);
+  const [assetRequests, setAssetRequests] = useState<AssetRequest[]>(SAMPLE_ASSET_REQUESTS);
   const [open, setOpen] = useState(false);
   const [whatsapp, setWhatsapp] = useState(false);
   const [systemMsg, setSystemMsg] = useState(false);
@@ -354,10 +408,10 @@ function TicketsPage() {
 
   const currentAssistantName = session?.name?.trim() ?? "";
 
-  const isTicketAssignedToCurrentAssistant = (ticket: Ticket) => {
+  const matchesTechnicalAssistant = (assistantName: string) => {
     if (!currentAssistantName) return true;
 
-    const ticketName = ticket.technicalAssistant.trim().toLowerCase();
+    const ticketName = assistantName.trim().toLowerCase();
     const sessionName = currentAssistantName.trim().toLowerCase();
 
     if (sessionName === "technical assistant" || sessionName === "tech assistant") {
@@ -371,10 +425,17 @@ function TicketsPage() {
     );
   };
 
+  const isTicketAssignedToCurrentAssistant = (ticket: Ticket) => matchesTechnicalAssistant(ticket.technicalAssistant);
+
   const assignedTickets =
     role === "Technical Assistant"
       ? tickets.filter((ticket) => isTicketAssignedToCurrentAssistant(ticket))
       : tickets;
+
+  const assignedAssetRequests =
+    role === "Technical Assistant"
+      ? assetRequests.filter((request) => matchesTechnicalAssistant(request.technicalAssistant))
+      : assetRequests;
 
   const handleTechStatusUpdate = (ticketId: string, nextLane: Lane, nextStatus: Ticket["status"]) => {
     setTickets((list) =>
@@ -559,6 +620,69 @@ function TicketsPage() {
             )}
           </SectionCard>
         </div>
+
+        <SectionCard
+          title="Asset Delivery Tasks"
+          description="Faculty and department asset requests assigned directly for delivery and handover."
+        >
+          {assignedAssetRequests.length === 0 ? (
+            <EmptyState
+              icon={Inbox}
+              message="No asset delivery tasks have been assigned to you yet."
+            />
+          ) : (
+            <div className="space-y-3">
+              {assignedAssetRequests.map((request) => (
+                <div key={request.id} className="rounded-2xl border border-border bg-card p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                        {request.id}
+                      </p>
+                      <h3 className="mt-1 text-lg font-bold">{request.title}</h3>
+                    </div>
+                    <Badge variant={request.status === "Delivered" ? "secondary" : "default"}>
+                      {request.status}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-3 text-sm text-muted-foreground">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Item</p>
+                      <p className="mt-1 font-semibold text-foreground">{request.assetItem} × {request.quantity}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Department</p>
+                      <p className="mt-1 font-semibold text-foreground">{request.department}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Required by</p>
+                      <p className="mt-1 font-semibold text-foreground">{request.requiredBy}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex justify-end">
+                    <Button
+                      type="button"
+                      variant={request.status === "Delivered" ? "secondary" : "default"}
+                      onClick={() =>
+                        setAssetRequests((list) =>
+                          list.map((item) =>
+                            item.id === request.id
+                              ? { ...item, status: item.status === "Delivered" ? "Assigned" : "Delivered" }
+                              : item,
+                          ),
+                        )
+                      }
+                    >
+                      {request.status === "Delivered" ? "Reopen task" : "Mark delivered"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
 
         {completionTicket ? (
           <Dialog
@@ -1042,6 +1166,81 @@ function TicketsPage() {
 
       {tab === "triage" ? (
         <div className="space-y-6">
+          <SectionCard
+            title="Asset Requests"
+            description="Dedicated asset requisitions for faculty and department delivery requests. These are assigned to Technical Assistants and do not create a break-fix ticket."
+          >
+            {assetRequests.length === 0 ? (
+              <EmptyState icon={Inbox} message="No asset requests are waiting for CISO review yet." />
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full min-w-[1100px] text-sm">
+                  <thead>
+                    <tr className="bg-secondary">
+                      <th className="p-3 text-left font-bold">Request Time</th>
+                      <th className="p-3 text-left font-bold">Requester</th>
+                      <th className="p-3 text-left font-bold">Asset</th>
+                      <th className="p-3 text-left font-bold">Department</th>
+                      <th className="p-3 text-left font-bold">Required By</th>
+                      <th className="p-3 text-left font-bold">Assign Technician</th>
+                      <th className="p-3 text-left font-bold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assetRequests.map((request) => (
+                      <tr key={request.id} className="border-t border-border align-top">
+                        <td className="p-3 whitespace-nowrap">{request.requestedAt}</td>
+                        <td className="p-3">
+                          <div className="min-w-[220px]">
+                            <p className="font-semibold">{request.requestor.name}</p>
+                            <p className="text-xs text-muted-foreground">{request.requestor.email}</p>
+                            <p className="text-xs text-muted-foreground">{request.requestor.phone}</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <div className="min-w-52">
+                            <p className="font-semibold">{request.assetItem}</p>
+                            <p className="text-xs text-muted-foreground">Qty: {request.quantity}</p>
+                          </div>
+                        </td>
+                        <td className="p-3 font-semibold">{request.department}</td>
+                        <td className="p-3">{request.requiredBy}</td>
+                        <td className="p-3">
+                          <Select
+                            value={request.technicalAssistant}
+                            onValueChange={(value) =>
+                              setAssetRequests((list) =>
+                                list.map((item) =>
+                                  item.id === request.id ? { ...item, technicalAssistant: value, status: 'Assigned' } : item,
+                                ),
+                              )
+                            }
+                          >
+                            <SelectTrigger className="w-44">
+                              <SelectValue placeholder="Assign technician" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TECHNICAL_ASSISTANTS.map((assistant) => (
+                                <SelectItem key={assistant} value={assistant}>
+                                  {assistant}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant={request.status === "Delivered" ? "secondary" : "default"}>
+                            {request.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
           <SectionCard
             title="Received Requests"
             description="Assign a technical assistant and approve or reject each request."
