@@ -34,6 +34,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   END_USER_REQUEST_STATUS_STEPS,
+  canRequestAssets,
   getEndUserRoleProfile,
   getTicketProgressIndex,
 } from "@/lib/end-user-portal";
@@ -59,6 +60,7 @@ const SAMPLE_REQUESTS: Ticket[] = [
     technician: "Tech Assistant 1",
     startedAt: "Sep 16, 2026",
     statusIndex: 0,
+    requestType: "Issue",
   },
   {
     id: "REQ-0002",
@@ -83,6 +85,20 @@ const SAMPLE_REQUESTS: Ticket[] = [
     technician: "Tech Assistant 3",
     startedAt: "Sep 20, 2026",
     statusIndex: 2,
+    requestType: "Issue",
+  },
+  {
+    id: "REQ-0004",
+    ticketNumber: "TKT-004",
+    title: "Laptop request for faculty lab",
+    category: "Asset Request",
+    priority: "Moderate",
+    location: "Department Office",
+    description: "Request for 2 laptops for the faculty teaching lab. Required by 30 Sep 2026.",
+    technician: "Unassigned",
+    startedAt: "Sep 21, 2026",
+    statusIndex: 0,
+    requestType: "Asset",
   },
 ];
 
@@ -120,6 +136,8 @@ const BUILDINGS = ["1", "2", "3", "4", "5"] as const;
 const FLOORS = ["1", "2", "3", "4"] as const;
 const ROOMS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
 
+type RequestType = "Issue" | "Asset";
+
 type Ticket = {
   id: string;
   ticketNumber?: string;
@@ -131,9 +149,11 @@ type Ticket = {
   technician: string;
   startedAt: string;
   statusIndex: 0 | 1 | 2;
+  requestType?: RequestType;
 };
 
 const emptyForm = {
+  requestType: "Issue" as RequestType,
   description: "",
   category: "",
   issue: "",
@@ -142,6 +162,9 @@ const emptyForm = {
   userEmail: "",
   userId: "",
   userPhone: "",
+  assetItem: "",
+  assetQuantity: "1",
+  assetRequiredBy: "",
   building: "",
   floor: "",
   room: "",
@@ -157,6 +180,7 @@ export function EndUserPortal({ role }: { role?: Role }) {
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [statusFilter, setStatusFilter] = useState<"All" | "Submitted" | "In Progress" | "Resolved">("All");
+  const canSubmitAssetRequest = canRequestAssets(activeRole);
 
   const visibleTickets = tickets.filter((ticket) => {
     const ticketStatus = getTicketProgressIndex(ticket);
@@ -170,7 +194,13 @@ export function EndUserPortal({ role }: { role?: Role }) {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (
+    const isAssetRequest = form.requestType === "Asset";
+
+    if (isAssetRequest) {
+      if (!form.assetItem.trim() || !form.assetRequiredBy || !form.description.trim() || !form.userName.trim()) {
+        return;
+      }
+    } else if (
       !form.category ||
       !form.issue ||
       (form.issue === "Other" && !form.otherIssue.trim()) ||
@@ -186,11 +216,13 @@ export function EndUserPortal({ role }: { role?: Role }) {
     const nextTicket: Ticket = {
       id: `REQ-${String(tickets.length + 1).padStart(4, "0")}`,
       ticketNumber: `TKT-${String(tickets.length + 1).padStart(3, "0")}`,
-      title: form.issue === "Other" ? form.otherIssue.trim() : form.issue,
-      category: form.category,
+      title: isAssetRequest ? `${form.assetItem.trim()} request` : form.issue === "Other" ? form.otherIssue.trim() : form.issue,
+      category: isAssetRequest ? "Asset Request" : form.category,
       priority: "Moderate",
-      location: `${form.building}${form.floor}${form.room}`,
-      description: form.description.trim(),
+      location: isAssetRequest ? `${form.building}${form.floor}${form.room}` : `${form.building}${form.floor}${form.room}`,
+      description: isAssetRequest
+        ? `${form.assetItem.trim()} · Quantity: ${form.assetQuantity || "1"} · Required by ${form.assetRequiredBy} · ${form.description.trim()}`
+        : form.description.trim(),
       technician: "Unassigned",
       startedAt: new Date().toLocaleDateString(undefined, {
         month: "short",
@@ -198,6 +230,7 @@ export function EndUserPortal({ role }: { role?: Role }) {
         year: "numeric",
       }),
       statusIndex: 0,
+      requestType: form.requestType,
     };
 
     setTickets((previous) => [nextTicket, ...previous]);
@@ -229,77 +262,151 @@ export function EndUserPortal({ role }: { role?: Role }) {
               <DialogTitle>Raise a Ticket (Issue Request)</DialogTitle>
             </DialogHeader>
             <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
-              <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={form.description}
-                  onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={form.category}
-                  onValueChange={(value) =>
-                    setForm((current) => ({
-                      ...current,
-                      category: value,
-                      issue: "",
-                      otherIssue: "",
-                    }))
-                  }
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(ISSUE_OPTIONS) as Array<keyof typeof ISSUE_OPTIONS>).map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="issue">Issue Type</Label>
-                <Select
-                  value={form.issue}
-                  onValueChange={(value) => setForm((current) => ({ ...current, issue: value, otherIssue: "" }))}
-                  disabled={!form.category}
-                >
-                  <SelectTrigger id="issue">
-                    <SelectValue placeholder="Select an issue" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {form.category
-                      ? ISSUE_OPTIONS[form.category as keyof typeof ISSUE_OPTIONS].map((issue) => (
-                          <SelectItem key={issue} value={issue}>
-                            {issue}
-                          </SelectItem>
-                        ))
-                      : null}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {form.issue === "Other" ? (
+              {canSubmitAssetRequest ? (
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="other-issue">Specify the issue</Label>
-                  <Input
-                    id="other-issue"
-                    value={form.otherIssue}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, otherIssue: event.target.value }))
+                  <Label htmlFor="request-type">Request Type</Label>
+                  <Select
+                    value={form.requestType}
+                    onValueChange={(value) =>
+                      setForm((current) => ({
+                        ...current,
+                        requestType: value as RequestType,
+                        issue: "",
+                        otherIssue: "",
+                        category: "",
+                        assetItem: "",
+                      }))
                     }
-                    placeholder="Describe the issue"
-                    required
-                  />
+                  >
+                    <SelectTrigger id="request-type">
+                      <SelectValue placeholder="Select a request type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Issue">Issue Request</SelectItem>
+                      <SelectItem value="Asset">Asset Request</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : null}
+
+              {form.requestType === "Asset" ? (
+                <>
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="asset-item">Asset item</Label>
+                    <Input
+                      id="asset-item"
+                      value={form.assetItem}
+                      onChange={(event) => setForm((current) => ({ ...current, assetItem: event.target.value }))}
+                      placeholder="Laptop, projector, printer, etc."
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="asset-quantity">Quantity</Label>
+                    <Input
+                      id="asset-quantity"
+                      type="number"
+                      min={1}
+                      value={form.assetQuantity}
+                      onChange={(event) => setForm((current) => ({ ...current, assetQuantity: event.target.value }))}
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="asset-required-by">Required by</Label>
+                    <Input
+                      id="asset-required-by"
+                      type="date"
+                      value={form.assetRequiredBy}
+                      onChange={(event) => setForm((current) => ({ ...current, assetRequiredBy: event.target.value }))}
+                    />
+                  </div>
+
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="description">Purpose / justification</Label>
+                    <Textarea
+                      id="description"
+                      value={form.description}
+                      onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                      placeholder="Explain why this asset is required and how it will be used."
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={form.category}
+                      onValueChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          category: value,
+                          issue: "",
+                          otherIssue: "",
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(ISSUE_OPTIONS) as Array<keyof typeof ISSUE_OPTIONS>).map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="issue">Issue Type</Label>
+                    <Select
+                      value={form.issue}
+                      onValueChange={(value) => setForm((current) => ({ ...current, issue: value, otherIssue: "" }))}
+                      disabled={!form.category}
+                    >
+                      <SelectTrigger id="issue">
+                        <SelectValue placeholder="Select an issue" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {form.category
+                          ? ISSUE_OPTIONS[form.category as keyof typeof ISSUE_OPTIONS].map((issue) => (
+                              <SelectItem key={issue} value={issue}>
+                                {issue}
+                              </SelectItem>
+                            ))
+                          : null}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {form.issue === "Other" ? (
+                    <div className="grid gap-2 sm:col-span-2">
+                      <Label htmlFor="other-issue">Specify the issue</Label>
+                      <Input
+                        id="other-issue"
+                        value={form.otherIssue}
+                        onChange={(event) =>
+                          setForm((current) => ({ ...current, otherIssue: event.target.value }))
+                        }
+                        placeholder="Describe the issue"
+                        required
+                      />
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-2 sm:col-span-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={form.description}
+                      onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="grid gap-2 sm:col-span-2">
                 <Label>Requester details</Label>
@@ -397,35 +504,41 @@ export function EndUserPortal({ role }: { role?: Role }) {
                 </div>
               </div>
 
-              <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="photo">Attach Photo</Label>
-                <label
-                  htmlFor="photo"
-                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground"
-                >
-                  <ImagePlus className="size-5 text-primary" />
-                  {form.photo || "Attach photo"}
-                </label>
-                <input
-                  id="photo"
-                  type="file"
-                  className="hidden"
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      photo: event.target.files?.[0]?.name ?? "",
-                    }))
-                  }
-                />
-              </div>
+              {form.requestType !== "Asset" ? (
+                <div className="grid gap-2 sm:col-span-2">
+                  <Label htmlFor="photo">Attach Photo (Optional)</Label>
+                  <label
+                    htmlFor="photo"
+                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground"
+                  >
+                    <ImagePlus className="size-5 text-primary" />
+                    {form.photo || "Attach photo"}
+                  </label>
+                  <input
+                    id="photo"
+                    type="file"
+                    className="hidden"
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        photo: event.target.files?.[0]?.name ?? "",
+                      }))
+                    }
+                  />
+                </div>
+              ) : null}
 
               <DialogFooter className="sm:col-span-2">
                 <Button
                   type="submit"
                   disabled={
-                    !form.category ||
-                    !form.issue ||
-                    (form.issue === "Other" && !form.otherIssue.trim()) ||
+                    (form.requestType === "Asset"
+                      ? !form.assetItem.trim() || !form.assetRequiredBy || !form.description.trim() || !form.userName.trim()
+                      : !form.category ||
+                        !form.issue ||
+                        (form.issue === "Other" && !form.otherIssue.trim()) ||
+                        !form.description.trim() ||
+                        !form.userName.trim()) ||
                     !form.building ||
                     !form.floor ||
                     !form.room
@@ -496,6 +609,11 @@ export function EndUserPortal({ role }: { role?: Role }) {
                         <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
                           {ticket.category}
                         </span>
+                        {ticket.requestType ? (
+                          <span className="rounded-full border border-border bg-primary/5 px-2.5 py-1 text-[11px] font-medium text-primary">
+                            {ticket.requestType} Request
+                          </span>
+                        ) : null}
                       </div>
                       <h3 className="mt-3 text-base font-bold text-foreground">{ticket.title}</h3>
                     </div>

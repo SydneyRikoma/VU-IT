@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   END_USER_ROLE_PROFILES,
+  canRequestAssets,
   getEndUserRoleProfile,
   getTicketProgressIndex,
 } from "./end-user-portal";
@@ -28,5 +29,12 @@ describe("end-user portal profiles", () => {
     expect(getTicketProgressIndex({ technician: "Tech Assistant 1", statusIndex: 1 })).toBe(1);
     expect(getTicketProgressIndex({ technician: "Tech Assistant 2", statusIndex: 2 })).toBe(2);
     expect(getTicketProgressIndex({ technician: "", statusIndex: 0 })).toBe(0);
+  });
+
+  it("enables asset requests for faculty and department users only", () => {
+    expect(canRequestAssets("Faculty")).toBe(true);
+    expect(canRequestAssets("Department")).toBe(true);
+    expect(canRequestAssets("Student")).toBe(false);
+    expect(canRequestAssets("Teaching Staff")).toBe(false);
   });
 });

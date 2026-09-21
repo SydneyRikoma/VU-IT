@@ -36,6 +36,10 @@ export const END_USER_ROLE_PROFILES: EndUserRoleProfile[] = [
 
 export const END_USER_REQUEST_STATUS_STEPS = ["Submitted", "In Progress", "Completed"] as const;
 
+export function canRequestAssets(role: Role): boolean {
+  return role === "Faculty" || role === "Department";
+}
+
 export function getTicketProgressIndex(ticket: {
   technician?: string | null;
   statusIndex?: number;
