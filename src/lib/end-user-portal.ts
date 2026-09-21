@@ -25,7 +25,7 @@ export const END_USER_ROLE_PROFILES: EndUserRoleProfile[] = [
   {
     role: "Student",
     title: "Student portal",
-    subtitle: "Raise a request, track its status, and keep up with your IT or campus support updates.",
+    subtitle: "",
   },
   {
     role: "Department",

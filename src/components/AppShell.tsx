@@ -31,7 +31,7 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-topbar text-topbar-foreground">
+      <header className="sticky top-0 z-50 border-b border-border/60 bg-topbar/95 text-topbar-foreground backdrop-blur-sm">
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6">
           <Link to="/" className="flex min-w-0 items-center gap-2">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
@@ -64,39 +64,15 @@ export function AppShell({
         </div>
       </header>
 
-      <div className="border-b border-border bg-topbar/40">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
-          {moduleTitle ? (
-            <Link
-              to="/"
-              className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              <ArrowLeft className="size-4" />
-              <span className="hidden sm:inline">Modules</span>
-            </Link>
-          ) : null}
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search ?? ""}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              readOnly={!onSearchChange}
-              placeholder="Search Module"
-              aria-label="Search Module"
-              className="h-11 rounded-full border-border bg-card pl-10 shadow-sm"
-            />
-          </div>
+      {moduleTitle ? (
+        <div className="mx-auto max-w-7xl px-4 pb-4 pt-4 text-sm text-muted-foreground sm:px-6">
+          <Link to="/" className="font-medium text-primary hover:underline">
+            Modules
+          </Link>
+          <span className="px-2">/</span>
+          <span className="font-semibold text-foreground">{moduleTitle}</span>
         </div>
-        {moduleTitle ? (
-          <div className="mx-auto max-w-7xl px-4 pb-4 text-sm text-muted-foreground sm:px-6">
-            <Link to="/" className="font-medium text-primary hover:underline">
-              Modules
-            </Link>
-            <span className="px-2">/</span>
-            <span className="font-semibold text-foreground">{moduleTitle}</span>
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         {privileged ? children : <EndUserPortal />}

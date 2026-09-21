@@ -21,7 +21,7 @@ describe("end-user portal profiles", () => {
     const profile = getEndUserRoleProfile("Student");
 
     expect(profile.title).toBe("Student portal");
-    expect(profile.subtitle).toContain("Raise a request");
+    expect(profile.subtitle).toBe("");
   });
 
   it("keeps assigned requests out of the outdated review state", () => {

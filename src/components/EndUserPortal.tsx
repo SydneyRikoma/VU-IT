@@ -119,7 +119,6 @@ const ISSUE_OPTIONS = {
 const BUILDINGS = ["1", "2", "3", "4", "5"] as const;
 const FLOORS = ["1", "2", "3", "4"] as const;
 const ROOMS = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
-const TECHNICAL_ASSISTANTS = ["Tech Assistant 1", "Tech Assistant 2", "Tech Assistant 3"] as const;
 
 type Ticket = {
   id: string;
@@ -143,8 +142,6 @@ const emptyForm = {
   userEmail: "",
   userId: "",
   userPhone: "",
-  technicalAssistant: "",
-  priority: "Moderate" as Ticket["priority"],
   building: "",
   floor: "",
   room: "",
@@ -159,6 +156,16 @@ export function EndUserPortal({ role }: { role?: Role }) {
   const [tickets, setTickets] = useState<Ticket[]>(SAMPLE_REQUESTS);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [statusFilter, setStatusFilter] = useState<"All" | "Submitted" | "In Progress" | "Resolved">("All");
+
+  const visibleTickets = tickets.filter((ticket) => {
+    const ticketStatus = getTicketProgressIndex(ticket);
+
+    if (statusFilter === "All") return true;
+    if (statusFilter === "Submitted") return ticketStatus === 0;
+    if (statusFilter === "In Progress") return ticketStatus === 1;
+    return ticketStatus === 2;
+  });
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -169,7 +176,6 @@ export function EndUserPortal({ role }: { role?: Role }) {
       (form.issue === "Other" && !form.otherIssue.trim()) ||
       !form.description.trim() ||
       !form.userName.trim() ||
-      !form.technicalAssistant ||
       !form.building ||
       !form.floor ||
       !form.room
@@ -182,10 +188,10 @@ export function EndUserPortal({ role }: { role?: Role }) {
       ticketNumber: `TKT-${String(tickets.length + 1).padStart(3, "0")}`,
       title: form.issue === "Other" ? form.otherIssue.trim() : form.issue,
       category: form.category,
-      priority: form.priority,
+      priority: "Moderate",
       location: `${form.building}${form.floor}${form.room}`,
       description: form.description.trim(),
-      technician: form.technicalAssistant,
+      technician: "Unassigned",
       startedAt: new Date().toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
@@ -207,7 +213,9 @@ export function EndUserPortal({ role }: { role?: Role }) {
           <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-foreground">
             {session?.name ?? "User"}, {profile.title}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{profile.subtitle}</p>
+          {profile.subtitle ? (
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{profile.subtitle}</p>
+          ) : null}
         </div>
 
         <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
@@ -302,7 +310,6 @@ export function EndUserPortal({ role }: { role?: Role }) {
                       id="user-name"
                       value={form.userName}
                       onChange={(event) => setForm((current) => ({ ...current, userName: event.target.value }))}
-                      placeholder="Full name"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -312,7 +319,6 @@ export function EndUserPortal({ role }: { role?: Role }) {
                       type="email"
                       value={form.userEmail}
                       onChange={(event) => setForm((current) => ({ ...current, userEmail: event.target.value }))}
-                      placeholder="name@vu.ac.za"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -321,7 +327,6 @@ export function EndUserPortal({ role }: { role?: Role }) {
                       id="user-id"
                       value={form.userId}
                       onChange={(event) => setForm((current) => ({ ...current, userId: event.target.value }))}
-                      placeholder="STU-12345"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -330,50 +335,9 @@ export function EndUserPortal({ role }: { role?: Role }) {
                       id="user-phone"
                       value={form.userPhone}
                       onChange={(event) => setForm((current) => ({ ...current, userPhone: event.target.value }))}
-                      placeholder="+27 71 123 4567"
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="priority">Priority</Label>
-                <Select
-                  value={form.priority}
-                  onValueChange={(value) => setForm((current) => ({ ...current, priority: value as Ticket["priority"] }))}
-                >
-                  <SelectTrigger id="priority">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(["High", "Moderate", "Low"] as Ticket["priority"][]).map((priority) => (
-                      <SelectItem key={priority} value={priority}>
-                        {priority}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="technical-assistant">Technical Assistant</Label>
-                <Select
-                  value={form.technicalAssistant}
-                  onValueChange={(value) =>
-                    setForm((current) => ({ ...current, technicalAssistant: value }))
-                  }
-                >
-                  <SelectTrigger id="technical-assistant">
-                    <SelectValue placeholder="Assign an assistant" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TECHNICAL_ASSISTANTS.map((assistant) => (
-                      <SelectItem key={assistant} value={assistant}>
-                        {assistant}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="grid gap-2 sm:col-span-2">
@@ -431,11 +395,6 @@ export function EndUserPortal({ role }: { role?: Role }) {
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {form.building && form.floor && form.room
-                    ? `Location code: ${form.building}${form.floor}${form.room}`
-                    : "Select a building, floor and room to generate the four-digit code."}
-                </p>
               </div>
 
               <div className="grid gap-2 sm:col-span-2">
@@ -445,7 +404,7 @@ export function EndUserPortal({ role }: { role?: Role }) {
                   className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border px-4 py-5 text-sm text-muted-foreground"
                 >
                   <ImagePlus className="size-5 text-primary" />
-                  {form.photo || "Click to attach a photo of the issue"}
+                  {form.photo || "Attach photo"}
                 </label>
                 <input
                   id="photo"
@@ -467,7 +426,6 @@ export function EndUserPortal({ role }: { role?: Role }) {
                     !form.category ||
                     !form.issue ||
                     (form.issue === "Other" && !form.otherIssue.trim()) ||
-                    !form.technicalAssistant ||
                     !form.building ||
                     !form.floor ||
                     !form.room
@@ -487,19 +445,34 @@ export function EndUserPortal({ role }: { role?: Role }) {
           <div>
             <h2 className="text-lg font-bold tracking-tight text-foreground">Active requests</h2>
             <p className="text-sm text-muted-foreground">
-              {tickets.length === 0
+              {visibleTickets.length === 0
                 ? "No requests submitted yet."
-                : `${tickets.length} request${tickets.length > 1 ? "s" : ""} in progress.`}
+                : `${visibleTickets.length} request${visibleTickets.length > 1 ? "s" : ""} shown.`}
             </p>
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            <Wrench className="size-3.5" />
-            {tickets.length === 0 ? "Ready for intake" : "Support team queued"}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              <Wrench className="size-3.5" />
+              {tickets.length === 0 ? "Ready for intake" : "Support team queued"}
+            </div>
+            <div className="w-40">
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as typeof statusFilter)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All</SelectItem>
+                  <SelectItem value="Submitted">Submitted</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 
-        {tickets.length === 0 ? (
+        {visibleTickets.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-10 text-center">
             <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
               <Clock3 className="size-5" />
@@ -511,7 +484,7 @@ export function EndUserPortal({ role }: { role?: Role }) {
           </div>
         ) : (
           <div className="space-y-4">
-            {tickets.map((ticket) => {
+            {visibleTickets.map((ticket) => {
               const progressIndex = getTicketProgressIndex(ticket);
               const currentStatus = END_USER_REQUEST_STATUS_STEPS[progressIndex];
 
