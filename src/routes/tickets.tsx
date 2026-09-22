@@ -392,6 +392,8 @@ type TabId = (typeof TABS)[number]["id"];
 function TicketsPage() {
   const { role, can, session } = useRole();
   const [tab, setTab] = useState<TabId>("triage");
+  const [activeRequestView, setActiveRequestView] = useState<"asset" | "received">("asset");
+  const [searchTerm, setSearchTerm] = useState("");
   const [tickets, setTickets] = useState<Ticket[]>(SAMPLE_TICKETS);
   const [assetRequests, setAssetRequests] = useState<AssetRequest[]>(SAMPLE_ASSET_REQUESTS);
   const [open, setOpen] = useState(false);
@@ -427,10 +429,33 @@ function TicketsPage() {
 
   const isTicketAssignedToCurrentAssistant = (ticket: Ticket) => matchesTechnicalAssistant(ticket.technicalAssistant);
 
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+
+  const filteredTickets =
+    normalizedSearch.length === 0
+      ? tickets
+      : tickets.filter((ticket) => {
+          const haystack = [
+            ticket.id,
+            ticket.title,
+            ticket.description,
+            ticket.category,
+            ticket.location,
+            ticket.user.name,
+            ticket.user.email,
+            ticket.technicalAssistant,
+            ticket.priority,
+          ]
+            .join(" ")
+            .toLowerCase();
+
+          return haystack.includes(normalizedSearch);
+        });
+
   const assignedTickets =
     role === "Technical Assistant"
-      ? tickets.filter((ticket) => isTicketAssignedToCurrentAssistant(ticket))
-      : tickets;
+      ? filteredTickets.filter((ticket) => isTicketAssignedToCurrentAssistant(ticket))
+      : filteredTickets;
 
   const assignedAssetRequests =
     role === "Technical Assistant"
@@ -1147,223 +1172,268 @@ function TicketsPage() {
 
   return (
     <AppShell moduleTitle="Ticket & Dispatch (Call Action Taken)">
-      <nav className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2 shadow-card">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
-              tab === t.id
-                ? "bg-accent text-accent-foreground"
-                : "text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            <t.icon className="size-4" />
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-border bg-card p-2 shadow-card">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                tab === t.id
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <t.icon className="size-4" />
+              {t.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="w-full max-w-sm">
+          <Input
+            type="search"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search ticket by ID, title, user, or location"
+            className="bg-card"
+          />
+        </div>
+      </div>
 
       {tab === "triage" ? (
         <div className="space-y-6">
-          <SectionCard
-            title="Asset Requests"
-            description="Dedicated asset requisitions for faculty and department delivery requests. These are assigned to Technical Assistants and do not create a break-fix ticket."
-          >
-            {assetRequests.length === 0 ? (
-              <EmptyState icon={Inbox} message="No asset requests are waiting for CISO review yet." />
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full min-w-[1100px] text-sm">
-                  <thead>
-                    <tr className="bg-secondary">
-                      <th className="p-3 text-left font-bold">Request Time</th>
-                      <th className="p-3 text-left font-bold">Requester</th>
-                      <th className="p-3 text-left font-bold">Asset</th>
-                      <th className="p-3 text-left font-bold">Department</th>
-                      <th className="p-3 text-left font-bold">Required By</th>
-                      <th className="p-3 text-left font-bold">Assign Technician</th>
-                      <th className="p-3 text-left font-bold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assetRequests.map((request) => (
-                      <tr key={request.id} className="border-t border-border align-top">
-                        <td className="p-3 whitespace-nowrap">{request.requestedAt}</td>
-                        <td className="p-3">
-                          <div className="min-w-[220px]">
-                            <p className="font-semibold">{request.requestor.name}</p>
-                            <p className="text-xs text-muted-foreground">{request.requestor.email}</p>
-                            <p className="text-xs text-muted-foreground">{request.requestor.phone}</p>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="min-w-52">
-                            <p className="font-semibold">{request.assetItem}</p>
-                            <p className="text-xs text-muted-foreground">Qty: {request.quantity}</p>
-                          </div>
-                        </td>
-                        <td className="p-3 font-semibold">{request.department}</td>
-                        <td className="p-3">{request.requiredBy}</td>
-                        <td className="p-3">
-                          <Select
-                            value={request.technicalAssistant}
-                            onValueChange={(value) =>
-                              setAssetRequests((list) =>
-                                list.map((item) =>
-                                  item.id === request.id ? { ...item, technicalAssistant: value, status: 'Assigned' } : item,
-                                ),
-                              )
-                            }
-                          >
-                            <SelectTrigger className="w-44">
-                              <SelectValue placeholder="Assign technician" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TECHNICAL_ASSISTANTS.map((assistant) => (
-                                <SelectItem key={assistant} value={assistant}>
-                                  {assistant}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-3">
-                          <Badge variant={request.status === "Delivered" ? "secondary" : "default"}>
-                            {request.status}
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </SectionCard>
+          <div className="flex justify-center">
+            <div className="inline-flex rounded-full border border-border bg-card p-1 shadow-card">
+              {(["asset", "received"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setActiveRequestView(view)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    activeRequestView === view
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {view === "asset" ? "Asset Requests" : "Received Requests"}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <SectionCard
-            title="Received Requests"
-            description="Assign a technical assistant and approve or reject each request."
-            action={raiseDialog}
-          >
-            {tickets.length === 0 ? (
-              <EmptyState icon={Inbox} message="No incoming tickets to triage yet." />
-            ) : (
-              <div className="overflow-x-auto rounded-xl border border-border">
-                <table className="w-full min-w-[1100px] text-sm">
-                  <thead>
-                    <tr className="bg-secondary">
-                      <th className="p-3 text-left font-bold">Request Time</th>
-                      <th className="p-3 text-left font-bold">User</th>
-                      <th className="p-3 text-left font-bold">Issue</th>
-                      <th className="p-3 text-left font-bold">Location</th>
-                      <th className="p-3 text-left font-bold">Assign Technician</th>
-                      <th className="p-3 text-left font-bold">Set Priority Level</th>
-                      <th className="p-3 text-left font-bold">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tickets.map((t) => (
-                      <tr key={t.id} className="border-t border-border align-top">
-                        <td className="p-3 whitespace-nowrap">{t.requestedAt}</td>
-                        <td className="p-3">
-                          <div className="min-w-[220px]">
-                            <p className="font-semibold">{t.user.name}</p>
-                            <p className="text-xs text-muted-foreground">{t.user.email}</p>
-                            <p className="text-xs text-muted-foreground">{t.user.phone}</p>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div className="min-w-52">
-                            <p className="font-semibold">{t.category}</p>
-                            <p className="text-xs text-muted-foreground">{t.title}</p>
-                          </div>
-                        </td>
-                        <td className="p-3 font-semibold">{t.location}</td>
-                        <td className="p-3">
-                          <Select
-                            value={t.technicalAssistant}
-                            onValueChange={(value) =>
-                              setTickets((list) =>
-                                list.map((x) =>
-                                  x.id === t.id ? { ...x, technicalAssistant: value } : x,
-                                ),
-                              )
-                            }
-                            disabled={!can("triage") || t.action !== "Pending"}
-                          >
-                            <SelectTrigger className="w-44">
-                              <SelectValue placeholder="Assign technician" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {TECHNICAL_ASSISTANTS.map((assistant) => (
-                                <SelectItem key={assistant} value={assistant}>
-                                  {assistant}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-3">
-                          <Select
-                            value={t.priority}
-                            onValueChange={(value) =>
-                              setTickets((list) =>
-                                list.map((x) =>
-                                  x.id === t.id ? { ...x, priority: value as Priority } : x,
-                                ),
-                              )
-                            }
-                            disabled={!can("triage") || t.action !== "Pending"}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(["High", "Moderate", "Low"] as Priority[]).map((priority) => (
-                                <SelectItem key={priority} value={priority}>
-                                  {priority}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="p-3">
-                          <Select
-                            value={t.action === "Pending" ? "" : t.action}
-                            onValueChange={(value) =>
-                              setTickets((list) =>
-                                list.map((x) =>
-                                  x.id === t.id ? { ...x, action: value as Ticket["action"] } : x,
-                                ),
-                              )
-                            }
-                            disabled={
-                              !can("triage") || !t.technicalAssistant || t.action !== "Pending"
-                            }
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue placeholder="Choose action" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Approved">Approve</SelectItem>
-                              <SelectItem value="Rejected">Reject</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {t.action !== "Pending" ? (
-                            <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                              {t.action}
-                            </p>
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div
+              className="flex w-[200%] transition-transform duration-300 ease-out"
+              style={{
+                transform: activeRequestView === "asset" ? "translateX(0%)" : "translateX(-50%)",
+              }}
+            >
+              <div className="w-1/2 shrink-0">
+                <SectionCard
+                  title="Asset Requests"
+                  description="Dedicated asset requisitions for faculty and department delivery requests. These are assigned to Technical Assistants and do not create a break-fix ticket."
+                >
+                  {assetRequests.length === 0 ? (
+                    <EmptyState icon={Inbox} message="No asset requests are waiting for CISO review yet." />
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full min-w-[1100px] text-sm">
+                        <thead>
+                          <tr className="bg-secondary">
+                            <th className="p-3 text-left font-bold">Request Time</th>
+                            <th className="p-3 text-left font-bold">Requester</th>
+                            <th className="p-3 text-left font-bold">Asset</th>
+                            <th className="p-3 text-left font-bold">Department</th>
+                            <th className="p-3 text-left font-bold">Required By</th>
+                            <th className="p-3 text-left font-bold">Assign Technician</th>
+                            <th className="p-3 text-left font-bold">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {assetRequests.map((request) => (
+                            <tr key={request.id} className="border-t border-border align-top">
+                              <td className="p-3 whitespace-nowrap">{request.requestedAt}</td>
+                              <td className="p-3">
+                                <div className="min-w-[220px]">
+                                  <p className="font-semibold">{request.requestor.name}</p>
+                                  <p className="text-xs text-muted-foreground">{request.requestor.email}</p>
+                                  <p className="text-xs text-muted-foreground">{request.requestor.phone}</p>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="min-w-52">
+                                  <p className="font-semibold">{request.assetItem}</p>
+                                  <p className="text-xs text-muted-foreground">Qty: {request.quantity}</p>
+                                </div>
+                              </td>
+                              <td className="p-3 font-semibold">{request.department}</td>
+                              <td className="p-3">{request.requiredBy}</td>
+                              <td className="p-3">
+                                <Select
+                                  value={request.technicalAssistant}
+                                  onValueChange={(value) =>
+                                    setAssetRequests((list) =>
+                                      list.map((item) =>
+                                        item.id === request.id
+                                          ? { ...item, technicalAssistant: value, status: "Assigned" }
+                                          : item,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="w-44">
+                                    <SelectValue placeholder="Assign technician" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {TECHNICAL_ASSISTANTS.map((assistant) => (
+                                      <SelectItem key={assistant} value={assistant}>
+                                        {assistant}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </td>
+                              <td className="p-3">
+                                <Badge variant={request.status === "Delivered" ? "secondary" : "default"}>
+                                  {request.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </SectionCard>
               </div>
-            )}
-          </SectionCard>
 
+              <div className="w-1/2 shrink-0">
+                <SectionCard
+                  title="Received Requests"
+                  description="Assign a technical assistant and approve or reject each request."
+                  action={raiseDialog}
+                >
+                  {filteredTickets.length === 0 ? (
+                    <EmptyState icon={Inbox} message="No incoming tickets match your search." />
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full min-w-[1100px] text-sm">
+                        <thead>
+                          <tr className="bg-secondary">
+                            <th className="p-3 text-left font-bold">Request Time</th>
+                            <th className="p-3 text-left font-bold">User</th>
+                            <th className="p-3 text-left font-bold">Issue</th>
+                            <th className="p-3 text-left font-bold">Location</th>
+                            <th className="p-3 text-left font-bold">Assign Technician</th>
+                            <th className="p-3 text-left font-bold">Set Priority Level</th>
+                            <th className="p-3 text-left font-bold">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredTickets.map((t) => (
+                            <tr key={t.id} className="border-t border-border align-top">
+                              <td className="p-3 whitespace-nowrap">{t.requestedAt}</td>
+                              <td className="p-3">
+                                <div className="min-w-[220px]">
+                                  <p className="font-semibold">{t.user.name}</p>
+                                  <p className="text-xs text-muted-foreground">{t.user.email}</p>
+                                  <p className="text-xs text-muted-foreground">{t.user.phone}</p>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="min-w-52">
+                                  <p className="font-semibold">{t.category}</p>
+                                  <p className="text-xs text-muted-foreground">{t.title}</p>
+                                </div>
+                              </td>
+                              <td className="p-3 font-semibold">{t.location}</td>
+                              <td className="p-3">
+                                <Select
+                                  value={t.technicalAssistant}
+                                  onValueChange={(value) =>
+                                    setTickets((list) =>
+                                      list.map((x) =>
+                                        x.id === t.id ? { ...x, technicalAssistant: value } : x,
+                                      ),
+                                    )
+                                  }
+                                  disabled={!can("triage") || t.action !== "Pending"}
+                                >
+                                  <SelectTrigger className="w-44">
+                                    <SelectValue placeholder="Assign technician" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {TECHNICAL_ASSISTANTS.map((assistant) => (
+                                      <SelectItem key={assistant} value={assistant}>
+                                        {assistant}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </td>
+                              <td className="p-3">
+                                <Select
+                                  value={t.priority}
+                                  onValueChange={(value) =>
+                                    setTickets((list) =>
+                                      list.map((x) =>
+                                        x.id === t.id ? { ...x, priority: value as Priority } : x,
+                                      ),
+                                    )
+                                  }
+                                  disabled={!can("triage") || t.action !== "Pending"}
+                                >
+                                  <SelectTrigger className="w-32">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(["High", "Moderate", "Low"] as Priority[]).map((priority) => (
+                                      <SelectItem key={priority} value={priority}>
+                                        {priority}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </td>
+                              <td className="p-3">
+                                <Select
+                                  value={t.action === "Pending" ? "" : t.action}
+                                  onValueChange={(value) =>
+                                    setTickets((list) =>
+                                      list.map((x) =>
+                                        x.id === t.id ? { ...x, action: value as Ticket["action"] } : x,
+                                      ),
+                                    )
+                                  }
+                                  disabled={
+                                    !can("triage") || !t.technicalAssistant || t.action !== "Pending"
+                                  }
+                                >
+                                  <SelectTrigger className="w-32">
+                                    <SelectValue placeholder="Choose action" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Approved">Approve</SelectItem>
+                                    <SelectItem value="Rejected">Reject</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {t.action !== "Pending" ? (
+                                  <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                                    {t.action}
+                                  </p>
+                                ) : null}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </SectionCard>
+              </div>
+            </div>
+          </div>
         </div>
       ) : null}
 
